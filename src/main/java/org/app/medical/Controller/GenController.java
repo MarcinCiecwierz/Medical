@@ -4,12 +4,13 @@ import org.app.medical.Model.Gen;
 import org.app.medical.Service.GenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@RestController
+@Controller
 public class GenController {
 
     private GenService genService;
@@ -19,7 +20,8 @@ public class GenController {
     }
 
     @GetMapping("/")
-    public List<Gen> getGens(){
-        return genService.getGens();
+    public String getGens(Model model){
+        model.addAttribute("listOfGens", genService.getGens());
+        return "index";
     }
 }
