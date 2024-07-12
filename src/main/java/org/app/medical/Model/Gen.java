@@ -40,4 +40,7 @@ public class Gen {
     private double G88_ctr;
     private double G88_treat_H;
     private double G88_treat;
+    private double x;
+    private double y;
+    private String label;
 }

@@ -22,30 +22,87 @@
 <div id="scatter-plot"></div>
     <script th:inline="javascript">
         var datapoints = /*[[${listOfGens}]]*/ [];
-        console.log('Raw Data Points:', datapoints);
-        var xValues = datapoints.map(function (gen) {return gen.g146_ctr_H; });
-        var yValues = datapoints.map(function (gen) {return gen.g146_ctr; });
 
-        console.log('X Values:', xValues);
-        console.log('Y Values:', yValues);
+        var xValues = datapoints.map(function (gen) {return gen.x; });
+        var yValues = datapoints.map(function (gen) {return gen.y; });
+        var labels = datapoints.map(function (gen) { return gen.label})
 
-        var data = [{
-            x: xValues,
-            y: yValues,
-            mode: 'markers',
-            type: 'scatter'
-        }];
+        function getUniqueLabels(labels) {
+            return [...new Set(labels)];
+        }
+
+        function createDataTraces(labels, xValues, yValues) {
+
+            const colorScale = [
+                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+                '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
+                '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'
+            ];
+
+            const uniqueLabels = getUniqueLabels(labels);
+            const traces = uniqueLabels.map((label, index) => {
+                const x = [];
+                const y = [];
+                const text = [];
+                labels.forEach((lbl, index) => {
+                    if (lbl === label) {
+                        x.push(xValues[index]);
+                        y.push(yValues[index]);
+                        text.push(lbl);
+                    }
+                });
+                return {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    name: label,
+                    text: text,
+                    type: 'scatter',
+                    hovertemplate: '<b>%{text}</b><br>X: %{x}<br>Y: %{y}<extra></extra>',
+                    marker: {
+                        color: colorScale[index % colorScale.length]
+                    }
+                };
+
+            });
+
+            return traces;
+        }
+
+        const initialTraces = createDataTraces(labels, xValues, yValues);
 
         var layout = {
-            xaxis: {
-                range: [Math.min(xValues), Math.max(xValues)]
-            },
-            yaxis: {
-                range: [Math.min(yValues), Math.max(xValues)]
-            }
-        };
+            xaxis: {title: 't-SNE'},
+            yaxis: {title: 't-SNE'},
+            height: 800,
+            width: 1000,
+            showlegend: true,
+            updatemenus: [{
+                buttons: [{
+                    args: [{visible: 'legendonly'}],
+                    label: 'Hide All',
+                    method: 'restyle'
+                }, {
+                    args: [{visible: true}],
+                    label: 'Show All',
+                    method: 'restyle'
+                }],
+                direction: 'left',
+                pad: {'r': 10, 't': 10},
+                showactive: true,
+                type: 'buttons',
+                x: 1,
+                xanchor: 'right',
+                y: 1.1,
+                yanchor: 'top'
+            }],
+            hovermode: 'closest'
+        }
 
-        Plotly.newPlot('scatter-plot', data, layout);
+        Plotly.newPlot('scatter-plot', initialTraces, layout);
+
+
     </script>
 </body>
 </html>
