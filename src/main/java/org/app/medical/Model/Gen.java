@@ -11,15 +11,15 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @AllArgsConstructor
-@Table
+@Table(name = "gens_normalized")
 public class Gen {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long Id;
 
-    private String ensembl_ID;
-    private String gene_Ensembl;
-    private String gene_biotype;
+    private String ensemblID;
+    private String geneensembl;
+    private String genebiotype;
     private double G146_ctr_H;
     private double G146_ctr;
     private double G146_treat_H;
@@ -40,7 +40,4 @@ public class Gen {
     private double G88_ctr;
     private double G88_treat_H;
     private double G88_treat;
-    private double x;
-    private double y;
-    private String label;
 }

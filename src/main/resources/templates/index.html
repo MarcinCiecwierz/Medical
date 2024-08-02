@@ -1,55 +1,117 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <link rel="stylesheet" href="/styles.css">
-<!--      <link rel="stylesheet" href="/static/styles.css">-->
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/morpheus-latest.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <meta charset="UTF-8">
     <title>Cell</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="/js/morpheus-latest.min.js"></script>
+    <script src="/js/morpheus-external-latest.min.js"></script>
 </head>
 <header>
     <div class="header">
         <a href="/" class="logo">Cells</a>
         <div class="header-right">
-            <a class="active" href="#home">Home</a>
-            <a href="#contact">Contact</a>
-            <a href="#about">About</a>
+            <a href="/about">About</a>
         </div>
     </div>
 </header>
+<br>
 <body>
-<h1> Scatter plot</h1>
-<div id="scatter-plot"></div>
-    <script th:inline="javascript">
-        var datapoints = /*[[${listOfGens}]]*/ [];
 
-        var xValues = datapoints.map(function (gen) {return gen.x; });
-        var yValues = datapoints.map(function (gen) {return gen.y; });
-        var labels = datapoints.map(function (gen) { return gen.label})
+<form autocomplete="off" method="get" id="search-form">
+    <div class="autocomplete" style="width:300px;">
+        <input id="myInput" type="text" name="query" placeholder="Search...">
+    </div>
+    <button class="submit-button" type="submit">Submit</button>
+    <button class="submit-button" onclick="openModal()">Heatmap</button>
+</form>
+<br>
+
+<div id="searchModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="searchList" class="search-list"></div>
+        <div class="autocomplete">
+            <input type="text" id="searchInput" placeholder="Search...">
+        </div>
+        <button class="submit-button" onclick="addQuery()">Add</button>
+        <button class="submit-button" onclick="searchQueries()">Search</button>
+        <div class="matrix" id="matrix-container"></div>
+    </div>
+</div>
+
+<div class="plot-container">
+    <div id="scatter-plot" class="plot"></div>
+    <div id="influence-plot" style="display:none;" class="plot"></div>
+</div>
+    <script th:inline="javascript">
+        let datapoints = /*[[${listOfGens}]]*/ [];
+
+        let genTransposed = /*[[${genTransposedList}]]*/ [];
+        var xValues = genTransposed.map(function (gen) {return gen.x; });
+        var yValues = genTransposed.map(function (gen) {return gen.y; });
+        var patient = genTransposed.map(function (gen) {return gen.patient});
+        var treatment = genTransposed.map(function (gen) {return gen.treatment});
+        var names = genTransposed.map(function (gen) {return gen.name})
 
         function getUniqueLabels(labels) {
             return [...new Set(labels)];
         }
 
-        function createDataTraces(labels, xValues, yValues) {
-
+        function createDataTraces(labels, xValues, yValues, names) {
             const colorScale = [
-                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-                '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-                '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'
+                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'
+            ];
+
+            console.log(names);
+
+            const uniqueLabels = getUniqueLabels(labels);
+            return uniqueLabels.map((label, index) => {
+                const x = [];
+                const y = [];
+                const text = [];
+                labels.forEach((lbl, idx) => {
+                    if (lbl === label) {
+                        x.push(xValues[idx]);
+                        y.push(yValues[idx]);
+                        text.push(names[idx]);
+                    }
+                });
+                return {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    name: label,
+                    text: text,
+                    type: 'scatter',
+                    hovertemplate: '<b>%{text}</b><br>X: %{x}<br>Y: %{y}<br><extra></extra>',
+                    marker: {
+                        color: colorScale[index % colorScale.length],
+                        size: 12
+                    }
+                };
+            });
+        }
+
+        function createDataTracesGrouped(labels, xValues, yValues, names) {
+            const colorScale = [
+                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'
             ];
 
             const uniqueLabels = getUniqueLabels(labels);
+            console.log(uniqueLabels);
             const traces = uniqueLabels.map((label, index) => {
                 const x = [];
                 const y = [];
                 const text = [];
-                labels.forEach((lbl, index) => {
+                labels.forEach((lbl, idx) => {
                     if (lbl === label) {
-                        x.push(xValues[index]);
-                        y.push(yValues[index]);
-                        text.push(lbl);
+                        x.push(xValues[idx]);
+                        y.push(yValues[idx]);
+                        text.push(names[idx]);
                     }
                 });
                 return {
@@ -61,48 +123,129 @@
                     type: 'scatter',
                     hovertemplate: '<b>%{text}</b><br>X: %{x}<br>Y: %{y}<extra></extra>',
                     marker: {
-                        color: colorScale[index % colorScale.length]
+                        color: colorScale[index % colorScale.length],
+                        size: 12
                     }
                 };
-
             });
+
+            console.log(traces)
 
             return traces;
         }
 
-        const initialTraces = createDataTraces(labels, xValues, yValues);
+        function influenceTracesCreate(labels, xValues, yValues, influences) {
+            return {
+                x: xValues,
+                y: yValues,
+                mode: 'markers',
+                text: labels,
+                type: 'scatter',
+                hovertemplate: '<b>%{text}</b><br>X: %{x}<br>Y: %{y}<br>Influence: %{marker.color}<br><extra></extra>',
+                marker: {
+                    size: 12,
+                    color: influences,
+                    colorscale: 'Viridis',
+                    colorbar: {
+                        title: 'Influence'
+                    }
+                }
+            };
+        }
+
+        const initialTraces = createDataTraces(patient, xValues, yValues, names);
+        const dataTracesGrouped = createDataTracesGrouped(treatment, xValues, yValues, names);
 
         var layout = {
-            xaxis: {title: 't-SNE'},
-            yaxis: {title: 't-SNE'},
-            height: 800,
-            width: 1000,
-            showlegend: true,
+            xaxis: { title: 't-SNE' },
+            yaxis: { title: 't-SNE' },
             updatemenus: [{
                 buttons: [{
-                    args: [{visible: 'legendonly'}],
-                    label: 'Hide All',
+                    args: [{ 'x': initialTraces.map(trace => trace.x),
+                        'y': initialTraces.map(trace => trace.y),
+                        'text': initialTraces.map(trace => trace.text),
+                        'name': initialTraces.map(trace => trace.name),
+                        'marker.color': initialTraces.map(trace => trace.marker.color),
+                        'visible': initialTraces.map(() => true).concat(dataTracesGrouped.map(() => false))}],
+                    label: 'Patient',
                     method: 'restyle'
-                }, {
-                    args: [{visible: true}],
-                    label: 'Show All',
+                },
+                    {
+                    args: [{ 'x': dataTracesGrouped.map(trace => trace.x),
+                        'y': dataTracesGrouped.map(trace => trace.y),
+                        'text': dataTracesGrouped.map(trace => trace.text),
+                        'name': dataTracesGrouped.map(trace => trace.name),
+                        'marker.color': dataTracesGrouped.map(trace => trace.marker.color),
+                        'visible': dataTracesGrouped.map(() => true).concat(initialTraces.map(() => false))}],
+                    label: 'Treatment',
                     method: 'restyle'
                 }],
-                direction: 'left',
-                pad: {'r': 10, 't': 10},
+                direction: 'down',
+                pad: { 'r': 10, 't': 10 },
+                type: 'dropdown',
                 showactive: true,
-                type: 'buttons',
                 x: 1,
                 xanchor: 'right',
                 y: 1.1,
                 yanchor: 'top'
             }],
-            hovermode: 'closest'
+            hovermode: 'closest',
         }
 
-        Plotly.newPlot('scatter-plot', initialTraces, layout);
+        Plotly.newPlot('scatter-plot', initialTraces , layout);
 
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('search-form').addEventListener('submit', function(event) {
+                event.preventDefault();
 
+                const query = document.getElementById('myInput').value;
+                console.log('Search Query:', query);
+
+                fetch(`/search?query=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Search Results:', data);
+
+                        const valueColumns = Object.keys(data).slice(4);
+                        console.log(valueColumns);
+
+                        const xValuesInfluence = genTransposed.map(item => item.x);
+                        const yValuesInfluence = genTransposed.map(item => item.y);
+
+                        const influences = genTransposed.map((item, index) => {
+                            const col = valueColumns[index];
+                            return data[col];
+                        });
+
+                        const labels = genTransposed.map((item) => `${item.name}`);
+
+                        const influenceTrace = influenceTracesCreate(labels, xValuesInfluence, yValuesInfluence, influences);
+
+                        Plotly.newPlot('influence-plot', [influenceTrace], {
+                            xaxis: { title: 't-SNE Influence' },
+                            yaxis: { title: 't-SNE Influence' },
+                            hovermode: 'closest'
+                        });
+
+                        document.getElementById('influence-plot').style.display = 'block';
+
+                        Plotly.Plots.resize('scatter-plot');
+
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+        });
     </script>
+
+<script src="/js/autocomplete.js"></script>
+<script src="/js/morhpeus-popup.js"></script>
+
+<div class="footer">
+    <footer>
+        <a href="https://github.com/MarcinCiecwierz" target="_blank">
+        <img src="/img/github-mark-white.png" alt="Source" width="25" height="25">
+        </a>
+    </footer>
+</div>
 </body>
 </html>
