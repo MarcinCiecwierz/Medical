@@ -11,13 +11,13 @@ function createHeatMapJson(objects) {
         seriesNames: ["dataSeries"],
         rowMetadataModel: {
             vectors: [{
-                name: "id",
+                name: "geneensembl",
                 array: objects.map(obj => obj.geneensembl)
             }]
         },
         columnMetadataModel: {
             vectors: [{
-                name: "id",
+                name: "values",
                 array: columnNames
             }]
         }
